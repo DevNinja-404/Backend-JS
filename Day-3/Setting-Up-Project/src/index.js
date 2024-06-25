@@ -3,8 +3,23 @@ import dotenv from "dotenv";
 dotenv.config({ path: "./env" });
 
 // Second Approach :-
+import app from "./app.js";
 import connectDB from "./db/index.js";
-connectDB();
+
+connectDB()
+  .then(() => {
+    app.on("error", (error) => {
+      console.log("App not able to communicate with DB!!!");
+      throw error;
+    });
+
+    app.listen(process.env.PORT || 8000, () => {
+      console.log(`App running at URL : http:\\localhost:${process.env.PORT}`);
+    });
+  })
+  .catch((err) => {
+    console.log(`MongoDB Connection Failed : ${err}`);
+  });
 
 // First Approach :-
 // import mongoose from "mongoose";
