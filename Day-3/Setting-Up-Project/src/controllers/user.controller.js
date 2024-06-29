@@ -24,17 +24,29 @@ const registerUser = asyncHandler(async (req, res) => {
   });
   if (existingUser) throw new ApiError(409, "User Already Exists!!!");
 
+  // console.log(req.files);
+
   // check for images and then check for avatar
   const avatarLocalPath = req.files?.avatar[0]?.path;
-  const coverImageLocalPath = req.files?.coverImage[0]?.path;
+
+  let coverImageLocalPath;
+  if (
+    req.files &&
+    Array.isArray(req.files.coverImage) &&
+    req.files?.coverImage.length > 0
+  ) {
+    coverImageLocalPath = req.files.coverImage[0].path;
+  }
+
   if (!avatarLocalPath) throw new ApiError(400, "Avatar Not Found!!!");
 
   // upload them to cloudinary
   const avatar = await uploadOnCloudinary(avatarLocalPath);
   if (!avatar) throw new ApiError(400, "Avatar Not Found!!!");
 
+  let coverImage;
   if (coverImageLocalPath) {
-    const coverImage = await uploadOnCloudinary(coverImageLocalPath);
+    coverImage = await uploadOnCloudinary(coverImageLocalPath);
     if (!coverImage) throw new ApiError(400, "CoverImage Not Found!!!");
   }
 

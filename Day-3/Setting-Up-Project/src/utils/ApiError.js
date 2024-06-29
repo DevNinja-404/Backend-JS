@@ -1,5 +1,10 @@
 class ApiError extends Error {
-  constructor(statusCode, message = "Something Went Wrong!!!", stack = "") {
+  constructor(
+    statusCode,
+    message = "Something Went Wrong!!!",
+    errors = [],
+    stack = ""
+  ) {
     super(message);
     this.statusCode = statusCode;
     this.data = null;
@@ -38,7 +43,7 @@ this.message = message: Stores the custom message in the message property (thoug
 
 this.success = false: Indicates that the operation was not successful (always false for errors).
 
-this.errors = errors: Presumably, this should capture specific errors, but errors is not defined in the provided code. It seems to be a mistake or a placeholder for a list of specific error details.
+this.errors = errors: this should capture specific errors.
 
 If a stack string is provided, it sets this.stack to the provided stack.
 If no stack is provided, it captures the stack trace using Error.captureStackTrace(this, this.constructor). This method:
