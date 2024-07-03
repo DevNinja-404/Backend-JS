@@ -295,6 +295,95 @@ const updateAccountCoverImage = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, user, "CoverImage Updated Successfully!!!"));
 });
 
+const getUserChannelProfile = asyncHandler(async (req, res) => {
+  const { username } = req.params;
+  if (!username?.trim()) throw new ApiError(400, "Username is Missing");
+
+  // User.aggregate() is a method which takes an array and inside it we write our stages in an object.
+  const channel = await User.aggregate([
+    // $match pipeline gives u the data by matching the username(key in our userSchema) having value as username.toLowerCase()(value of the username which we want to match with)
+    {
+      $match: {
+        username: username?.toLowerCase(),
+      },
+    },
+
+    // Now we want to find the subscribers of the channel :
+
+    // The $lookup stage performs a join operation between two collections. It allows you to combine data from a foreign collection into the current collection based on matching values from specified fields.
+    // from: The name of the foreign collection to join with.
+    // localField: The field from the input documents.
+    // foreignField: The field from the documents in the 'from' collection.
+    // as: The name of the new array field to add to the input documents that contains the matching documents from the from collection.
+    // Here we are matching the _id of our local Collection with channel of our foreignCollection if it matches then it joins the details of the foreign Collection as  subscribers : Array(inside the array we have the details of the matched document of the foreign Collection)
+
+    // Remember if u want to use the localField in the aggregation always use $ in front
+    {
+      $lookup: {
+        from: "subscriptions",
+        localField: "$_id",
+        foreignField: "channel",
+        as: "subscribers",
+      },
+    },
+
+    // We want to find whom I have Subscribed :
+    {
+      $lookup: {
+        from: "subscriptions",
+        localField: "$_id",
+        foreignField: "subscriber",
+        as: "subscribedTo",
+      },
+    },
+
+    // In MongoDB, the $addFields stage in an aggregation pipeline is used to add new fields to the documents or to modify existing fields. This stage allows you to create computed fields, add constant values, or perform various transformations on the document fields.
+    {
+      $addField: {
+        subscribersCount: { $size: "$subscribers" },
+        channelsSubscribedToCount: { $size: "$subscribedTo" },
+        // So to check whether I am subscribed to the channel i an trying to view page of we use the following :
+        // $cond to add the condition
+        // if to specify the condition
+        // $in(checks in both array and object) to check whether i am inside the subscribers list of the channel or not (subscribers is our field in the given userSchema of the channel we want to view, inside that we have channel and subscriber so we see if we are one of that subscriber )
+        // true then add true in isSubscribed field
+        // else add false in isSubscribed field
+        isSubscribed: {
+          $cond: {
+            if: { $in: [req.user?._id, "$subscribers.subscriber"] },
+            then: true,
+            else: false,
+          },
+        },
+      },
+    },
+    // The $project stage in MongoDB's aggregation pipeline is used to include, exclude, or add new fields to the documents.
+    // 1 to include the field
+    {
+      $project: {
+        email: 1,
+        fullName: 1,
+        username: 1,
+        avatar: 1,
+        coverImage: 1,
+        subscribersCount: 1,
+        channelsSubscribedToCount: 1,
+        isSubscribed: 1,
+        createdAt: 1,
+      },
+    },
+  ]);
+
+  if (!channel?.length) throw new ApiError(400, "Channel doesn't Exist");
+
+  // The aggregation returns the array of the documents of our collection in which each documents is object but we used the $match to match the username and as its unique for our schema we will get only one document in our array
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(200, channel[0], "User Channel Fetched Successfully!!!")
+    );
+});
+
 export const userController = {
   registerUser,
   loginUser,
@@ -305,4 +394,5 @@ export const userController = {
   updateAccountDetails,
   updateAccountAvatar,
   updateAccountCoverImage,
+  getUserChannelProfile,
 };
