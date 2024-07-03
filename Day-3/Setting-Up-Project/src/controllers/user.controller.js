@@ -384,6 +384,48 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
     );
 });
 
+const getWatchHistory = asyncHandler(async (req, res) => {
+  // From the req.user?._id we get the Idstring not the mongoDB id but as we r using mongoose when we query our DB ,mongoose converts that string into the mongoDB ObjectId as ObjectId("IdString").
+  const user = await User.aggregate([
+    // Aggregation Pipeline codes directly goes to our DB so we first need to convert our _id to ObjectId as:
+    { $match: { _id: new mongoose.Types.ObjectId(req.user?._id) } },
+    {
+      $lookup: {
+        from: "videos",
+        localField: "$watchHistory",
+        foreignField: "_id",
+        as: "watchHistory",
+        // After writing pipeline we can write multiple pipelines within it but remember we r currently in videoSchema and looking up in userSchema inside the pipeline
+        pipeline: [
+          {
+            $lookup: {
+              from: "users",
+              localField: "$owner",
+              foreignField: "_id",
+              as: "owner",
+              pipeline: [{ $project: { fullName: 1, username: 1, avatar: 1 } }],
+            },
+          },
+          // The document from above pipeline returns an array in the owner field with one object(first-object) in it having our projected fields as key-value inside the object but we want directly show owner-Details as an object rather than being it nested in the array basically it is going to be easier in frontend
+          {
+            $addField: { owner: { $first: "$owner" } },
+          },
+        ],
+      },
+    },
+  ]);
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        user[0].watchHistory,
+        "WatchHistory Fetched Successfully!!!"
+      )
+    );
+});
+
 export const userController = {
   registerUser,
   loginUser,
@@ -395,4 +437,5 @@ export const userController = {
   updateAccountAvatar,
   updateAccountCoverImage,
   getUserChannelProfile,
+  getWatchHistory,
 };
