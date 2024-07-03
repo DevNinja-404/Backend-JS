@@ -17,5 +17,7 @@ router.route("/login").post(userController.loginUser);
 
 // Secured-Routes :
 router.route("/logout").post(verifyJWT, userController.logoutUser);
+// It is a secured route but why not using the middleware ,cause whether the user is valid or not,in our refreshAccessToken controller logic we verify the user so, no need to add the middleware.
+router.route("/refresh-token").post(userController.refreshAccessToken);
 
 export default router;
