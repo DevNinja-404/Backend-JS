@@ -1,7 +1,7 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { User } from "../models/user.model.js";
-import { uploadOnCloudinary } from "../utils/cloudinary.js";
+import { uploadOnCloudinary, deleteAsset } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken";
 
@@ -261,11 +261,22 @@ const updateAccountAvatar = asyncHandler(async (req, res) => {
   const avatar = await uploadOnCloudinary(avatarLocalPath);
   if (!avatar)
     throw new ApiError(400, "Error while uploading avatar on Cloudinary");
-  const user = await User.findByIdAndUpdate(
-    req.user?._id,
-    { $set: { avatar: avatar.url } },
-    { new: true }
-  ).select("-password -refreshToken");
+
+  // Well new avatar is uploaded to Cloudinary but we need to delete the prev one from the cloudinary
+
+  // Accessing The User :
+  const user = await User.findById(req.user?._id).select(
+    "-password -refreshToken"
+  );
+  // Deleting The Previous Image :
+  const { result } = await deleteAsset(
+    user.avatar.split("/").pop().split(".")[0]
+  );
+  if (result !== "ok") throw new ApiError(400, "Previous Avatar Not Deleted");
+
+  // Updating The Document with new avatar :
+  user.avatar = avatar.url;
+  await user.save({ validateBeforeSave: false });
 
   return res
     .status(200)
@@ -280,21 +291,28 @@ const updateAccountCoverImage = asyncHandler(async (req, res) => {
   if (!coverImage)
     throw new ApiError(400, "Error while uploading coverImage on Cloudinary");
 
-  const user = await User.findByIdAndUpdate(
-    req.user?._id,
-    {
-      $set: {
-        coverImage: coverImage.url,
-      },
-    },
-    { new: true }
-  ).select("-password -refreshToken");
+  const user = await User.findById(req.user?._id).select(
+    "-password -refreshToken"
+  );
+
+  // since coverImage was optional to upload what if it was previously empty and now we are adding the image then we wouldn't be able get the url and hence not the publicId of coverImgae so a check before using the deleteAsset code
+  if (user.coverImage) {
+    const { result } = await deleteAsset(
+      user.coverImage.split("/").pop().split(".")[0]
+    );
+    if (result !== "ok")
+      throw new ApiError(400, "Previous coverImage Not Deleted");
+  }
+
+  user.coverImage = coverImage.url;
+  await user.save({ validateBeforeSave: false });
 
   return res
     .status(200)
     .json(new ApiResponse(200, user, "CoverImage Updated Successfully!!!"));
 });
 
+// These two are left to test, will test after making videoControllers
 const getUserChannelProfile = asyncHandler(async (req, res) => {
   const { username } = req.params;
   if (!username?.trim()) throw new ApiError(400, "Username is Missing");
