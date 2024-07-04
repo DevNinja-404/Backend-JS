@@ -357,7 +357,7 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
 
     // In MongoDB, the $addFields stage in an aggregation pipeline is used to add new fields to the documents or to modify existing fields. This stage allows you to create computed fields, add constant values, or perform various transformations on the document fields.
     {
-      $addField: {
+      $addFields: {
         subscribersCount: { $size: "$subscribers" },
         channelsSubscribedToCount: { $size: "$subscribedTo" },
         // So to check whether I am subscribed to the channel i an trying to view page of we use the following :
@@ -426,7 +426,7 @@ const getWatchHistory = asyncHandler(async (req, res) => {
           },
           // The document from above pipeline returns an array in the owner field with one object(first-object) in it having our projected fields as key-value inside the object but we want directly show owner-Details as an object rather than being it nested in the array basically it is going to be easier in frontend
           {
-            $addField: { owner: { $first: "$owner" } },
+            $addFields: { owner: { $first: "$owner" } },
           },
         ],
       },
