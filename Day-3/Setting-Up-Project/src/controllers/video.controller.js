@@ -143,9 +143,35 @@ const updateVideoThumbnail = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, video, "Thumbnail Updated Successfully!!!"));
 });
 
+const deleteVideo = asyncHandler(async (req, res) => {
+  const { videoId } = req.params;
+  const response = await Video.deleteOne({ _id: videoId });
+  if (!response)
+    throw new ApiError(400, "Something went wrong while deleting the video");
+
+  res
+    .status(200)
+    .json(new ApiResponse(200, response, "Video Deleted Successfully"));
+});
+
+const togglePublishedStatus = asyncHandler(async (req, res) => {
+  const { videoId } = req.params;
+  const video = await Video.findById(videoId);
+  if (!video)
+    throw new ApiError(400, "Video Not Found To Toggle Published Status");
+  video.isPublished = !video.isPublished;
+  await video.save({ validateBeforeSave: false });
+
+  res
+    .status(200)
+    .json(new ApiResponse(200, video, "Published Status Toggled Successfuly"));
+});
+
 export const videoController = {
   publishAVideo,
   getVideoById,
   updateVideo,
   updateVideoThumbnail,
+  deleteVideo,
+  togglePublishedStatus,
 };

@@ -27,4 +27,9 @@ router
     videoController.updateVideoThumbnail
   );
 
+router.route("/delete/:videoId").delete(verifyJWT, videoController.deleteVideo);
+
+router
+  .route("/toggle-published/:videoId")
+  .patch(verifyJWT, videoController.togglePublishedStatus);
 export default router;
