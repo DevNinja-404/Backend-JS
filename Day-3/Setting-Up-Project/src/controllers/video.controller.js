@@ -44,6 +44,99 @@ const getVideoWithOwnerDetails = async (videoId) => {
   return video[0];
 };
 
+// Doing the pagination with actual aggregation logic :
+// const getAllVideos = asyncHandler(async (req, res) => {
+
+//   const {
+//     page = 1,
+//     limit = 10,
+//     title,
+//     sortBy = "createdAt",
+//     sortType = "asc",
+//     userId,
+//   } = req.query;
+
+//   const DBQuery = [];
+
+//   if (title) {
+//     DBQuery.push({
+//       $match: {
+//         title: new RegExp(title, "gi"),
+//       },
+//     });
+//   }
+
+//   if (userId) {
+//     DBQuery.push({
+//       $match: {
+//         owner: new mongoose.Types.ObjectId(userId),
+//       },
+//     });
+//   }
+
+//   DBQuery.push(
+//     {
+//       $lookup: {
+//         from: "users",
+//         localField: "owner",
+//         foreignField: "_id",
+//         as: "owner",
+//       },
+//     },
+//     { $addFields: { owner: { $first: "$owner.fullName" } } },
+//     {
+//       // The $facet stage allows for multiple aggregation pipelines to run within a single stage. In this case, there are two pipelines: one for metadata and one for data.
+//       $facet: {
+//         metadata: [
+//           {
+//             $count: "total", // Counts the total number of documents that pass through this stage and adds the count to the 'total' field
+//           },
+//         ],
+//         data: [
+//           {
+//             $sort: { [sortBy]: sortType === "asc" ? 1 : -1 },
+//           },
+//           {
+//             $skip: (+page - 1) * +limit,
+//           },
+//           {
+//             $limit: +limit,
+//           },
+//         ],
+//       },
+//     },
+//     {
+//       $addFields: {
+//         total: {
+//           $arrayElemAt: ["$metadata.total", 0],
+//         },
+//       },
+//     },
+//     {
+//       $project: {
+//         metadata: 0,
+//       },
+//     }
+//   );
+
+//   const videos = await Video.aggregate(DBQuery);
+//   if (!videos) throw new ApiError(400, "Videos Not Found");
+
+//   res.status(200).json(
+//     new ApiResponse(
+//       200,
+//       {
+//         videos: videos[0].data,
+//         page: +page,
+//         limit: +limit,
+//         total: videos[0].total || 0,
+//       },
+//       "All Videos Fetched Successfully!!!"
+//     )
+//   );
+// });
+
+// Pagination using the mongoose-aggregate-paginate-v2 package :
 const getAllVideos = asyncHandler(async (req, res) => {
   const {
     page = 1,
@@ -81,53 +174,36 @@ const getAllVideos = asyncHandler(async (req, res) => {
         as: "owner",
       },
     },
-    { $addFields: { owner: { $first: "$owner.fullName" } } },
-    {
-      // The $facet stage allows for multiple aggregation pipelines to run within a single stage. In this case, there are two pipelines: one for metadata and one for data.
-      $facet: {
-        metadata: [
-          {
-            $count: "total", // Counts the total number of documents that pass through this stage and adds the count to the 'total' field
-          },
-        ],
-        data: [
-          {
-            $sort: { [sortBy]: sortType === "asc" ? 1 : -1 },
-          },
-          {
-            $skip: (+page - 1) * +limit,
-          },
-          {
-            $limit: +limit,
-          },
-        ],
-      },
-    },
+
     {
       $addFields: {
-        total: {
-          $arrayElemAt: ["$metadata.total", 0],
-        },
+        owner: { $first: "$owner.fullName" },
       },
     },
     {
-      $project: {
-        metadata: 0,
-      },
+      $sort: { [sortBy]: sortType === "asc" ? 1 : -1 },
     }
   );
 
-  const videos = await Video.aggregate(DBQuery);
+  const videos = await Video.aggregatePaginate(Video.aggregate(DBQuery), {
+    page: +page,
+    limit: +limit,
+  });
   if (!videos) throw new ApiError(400, "Videos Not Found");
+
+  //videos contains a lot of info about the pagination do check it :
+  // console.log(videos);
 
   res.status(200).json(
     new ApiResponse(
       200,
       {
-        videos: videos[0].data,
-        page: +page,
+        videos: videos.docs,
+        currentPage: +page,
         limit: +limit,
-        total: videos[0].total || 0,
+        totalDocs: videos.totalDocs || 0,
+        totalPages: videos.totalPages,
+        nextPage: videos.nextPage,
       },
       "All Videos Fetched Successfully!!!"
     )
