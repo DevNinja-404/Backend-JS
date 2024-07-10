@@ -4,6 +4,7 @@ import { User } from "../models/user.model.js";
 import { uploadOnCloudinary, deleteAsset } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken";
+import mongoose from "mongoose";
 
 const generateAccessAndRefreshTokens = async (userId) => {
   try {
@@ -335,11 +336,10 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
     // as: The name of the new array field to add to the input documents that contains the matching documents from the from collection.
     // Here we are matching the _id of our local Collection with channel of our foreignCollection if it matches then it joins the details of the foreign Collection as  subscribers : Array(inside the array we have the details of the matched document of the foreign Collection)
 
-    // Remember if u want to use the localField in the aggregation always use $ in front
     {
       $lookup: {
         from: "subscriptions",
-        localField: "$_id",
+        localField: "_id",
         foreignField: "channel",
         as: "subscribers",
       },
@@ -349,7 +349,7 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
     {
       $lookup: {
         from: "subscriptions",
-        localField: "$_id",
+        localField: "_id",
         foreignField: "subscriber",
         as: "subscribedTo",
       },
@@ -360,7 +360,7 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
       $addFields: {
         subscribersCount: { $size: "$subscribers" },
         channelsSubscribedToCount: { $size: "$subscribedTo" },
-        // So to check whether I am subscribed to the channel i an trying to view page of we use the following :
+        // So to check whether I am subscribed to the channel i am trying to view page of, we use the following :
         // $cond to add the condition
         // if to specify the condition
         // $in(checks in both array and object) to check whether i am inside the subscribers list of the channel or not (subscribers is our field in the given userSchema of the channel we want to view, inside that we have channel and subscriber so we see if we are one of that subscriber )
@@ -392,6 +392,7 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
     },
   ]);
 
+  console.log(channel);
   if (!channel?.length) throw new ApiError(400, "Channel doesn't Exist");
 
   // The aggregation returns the array of the documents of our collection in which each documents is object but we used the $match to match the username and as its unique for our schema we will get only one document in our array
@@ -410,7 +411,7 @@ const getWatchHistory = asyncHandler(async (req, res) => {
     {
       $lookup: {
         from: "videos",
-        localField: "$watchHistory",
+        localField: "watchHistory",
         foreignField: "_id",
         as: "watchHistory",
         // After writing pipeline we can write multiple pipelines within it but remember we r currently in videoSchema and looking up in userSchema inside the pipeline
@@ -418,7 +419,7 @@ const getWatchHistory = asyncHandler(async (req, res) => {
           {
             $lookup: {
               from: "users",
-              localField: "$owner",
+              localField: "owner",
               foreignField: "_id",
               as: "owner",
               pipeline: [{ $project: { fullName: 1, username: 1, avatar: 1 } }],
