@@ -57,7 +57,7 @@ const getUserChannelSubscribers = asyncHandler(async (req, res) => {
         as: "subscriber",
         pipeline: [
           {
-            $project: { email: 1, username: 1 },
+            $project: { username: 1, avatar: 1 },
           },
         ],
       },
@@ -103,7 +103,7 @@ const getSubscribedChannels = asyncHandler(async (req, res) => {
         as: "channel",
         pipeline: [
           {
-            $project: { username: 1 },
+            $project: { username: 1, avatar: 1 },
           },
         ],
       },
